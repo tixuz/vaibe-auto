@@ -106,6 +106,90 @@ CALENDAR: dict[int, tuple[str, str]] = {
     23: ("24-fal-runner",             "Night Render"),
 }
 
+# Per-slot metadata: hero_type, best_provider, dur_s, description
+# hero_type: "cartoon" | "real" | "both" | "none"
+CALENDAR_META: dict[int, dict] = {
+    0:  {"hero": "none",    "provider": "fal-wan",   "dur": 6,  "desc": "Атмосфера, ASMR — шёлк, свечи, туман. Без героя."},
+    1:  {"hero": "cartoon", "provider": "fal-wan26", "dur": 5,  "desc": "Хоррор/триллер. Мультяшный злодей или тень. Жуть в стиле аниме."},
+    2:  {"hero": "real",    "provider": "fal-wan",   "dur": 7,  "desc": "Короткая драма. Реальный герой, монолог, ночная сцена."},
+    3:  {"hero": "both",    "provider": "fal-fast",  "dur": 6,  "desc": "Character consistency — один герой в трёх ракурсах подряд."},
+    4:  {"hero": "none",    "provider": "fal-wan26", "dur": 8,  "desc": "Путешествие/пейзаж. Дроновый облёт, рассвет, природа."},
+    5:  {"hero": "real",    "provider": "fal-wan",   "dur": 6,  "desc": "Новости/документалка. Говорящая голова, карта, факты."},
+    6:  {"hero": "both",    "provider": "fal-wan",   "dur": 5,  "desc": "Образовательный. Герой объясняет концепцию у доски / экрана."},
+    7:  {"hero": "none",    "provider": "fal-wan",   "dur": 5,  "desc": "Еда/напитки. Macro-съёмка, пар, текстуры. Без героя."},
+    8:  {"hero": "real",    "provider": "fal-wan",   "dur": 7,  "desc": "История бренда. Основатель, офис, продукт — origin story."},
+    9:  {"hero": "cartoon", "provider": "fal-wan26", "dur": 5,  "desc": "Motion design реклама. Логотип, частицы, call-to-action."},
+    10: {"hero": "both",    "provider": "fal-fast",  "dur": 8,  "desc": "Кино. Широкий план, оператор двигается, золотой час."},
+    11: {"hero": "both",    "provider": "fal-wan26", "dur": 4,  "desc": "Social hook. Первые 3 сек — шок/вопрос, дальше раскрытие."},
+    12: {"hero": "none",    "provider": "fal-wan",   "dur": 5,  "desc": "E-commerce. Продукт на белом фоне, 360°, цена."},
+    13: {"hero": "none",    "provider": "fal-wan26", "dur": 6,  "desc": "Product reveal. Распаковка, блик, тизер."},
+    14: {"hero": "cartoon", "provider": "fal-wan26", "dur": 6,  "desc": "3D CGI. Pixar/игровой герой, студийный свет, рендер."},
+    15: {"hero": "cartoon", "provider": "fal-wan26", "dur": 7,  "desc": "Музыкальное видео. Ритм → клип, стробоскоп, цвет."},
+    16: {"hero": "cartoon", "provider": "fal-wan26", "dur": 5,  "desc": "Аниме-экшн. Атака, спецприём, искры, скорость."},
+    17: {"hero": "both",    "provider": "fal-wan",   "dur": 6,  "desc": "Лукбук/мода. Герой в образе, золотой закат, slow-mo."},
+    18: {"hero": "real",    "provider": "fal-wan26", "dur": 5,  "desc": "Спорт/экшн. Герой в движении, рывок, финишная черта."},
+    19: {"hero": "none",    "provider": "fal-wan",   "dur": 7,  "desc": "Недвижимость. Квартира, дрон снаружи, интерьер."},
+    20: {"hero": "cartoon", "provider": "fal-wan26", "dur": 5,  "desc": "Комикс-в-видео. Панели оживают, pop-art, экшн-слова."},
+    21: {"hero": "cartoon", "provider": "fal-wan26", "dur": 6,  "desc": "Мультфильм/bedtime. Мягкие цвета, герой засыпает, звёзды."},
+    22: {"hero": "cartoon", "provider": "fal-wan26", "dur": 5,  "desc": "Файтинг. Два персонажа, арена, финальный удар."},
+    23: {"hero": "both",    "provider": "fal-wan",   "dur": 8,  "desc": "Ночной рендер. Тёмная сцена, неон, код, матрица."},
+}
+
+
+def cmd_list_scenarios() -> None:
+    """Print two scenario tables: cartoon hero vs real hero."""
+    DUR = 5  # base duration for cost estimate
+
+    def cost_est(provider: str, dur: int) -> str:
+        rate = PROVIDERS.get(provider, {}).get("cost_per_sec", 0)
+        return f"~${rate * dur:.2f}"
+
+    for hero_filter, label, emoji in [
+        ("cartoon", "МУЛЬТЯШНЫЙ / AI-АВАТАР герой", "🎨"),
+        ("real",    "РЕАЛЬНЫЙ герой (talking head)", "🎥"),
+        ("none",    "БЕЗ ГЕРОЯ — B-roll / атмосфера", "🌄"),
+    ]:
+        print(f"\n{'═'*60}")
+        print(f"  {emoji}  {label}")
+        print(f"{'═'*60}")
+        print(f"  {'Час':>3}  {'Название':<24} {'Провайдер':<12} {'$':>6}  Описание")
+        print(f"  {'-'*3}  {'-'*24} {'-'*12} {'-'*6}  {'-'*28}")
+        for h in range(24):
+            skill, name = CALENDAR[h]
+            meta = CALENDAR_META[h]
+            if meta["hero"] not in (hero_filter, "both"):
+                continue
+            prov = meta["provider"]
+            dur  = meta["dur"]
+            rate = PROVIDERS.get(prov, {}).get("cost_per_sec", 0)
+            est  = f"~${rate * dur:.2f}"
+            print(f"  {h:>3}h  {name:<24} {prov:<12} {est:>6}  {meta['desc'][:45]}")
+    print()
+
+
+def cmd_list_scenarios_full() -> None:
+    """Print all 24 slots with both hero types side by side."""
+    print(f"\n{'═'*72}")
+    print(f"  📋  ВСЕ 24 СЦЕНАРИЯ — провайдер + стоимость")
+    print(f"{'═'*72}")
+    print(f"  {'Ч':>2}  {'Название':<24} {'Герой':<8} {'Провайдер':<12} {'$':>6}  Тип контента")
+    print(f"  {'-'*72}")
+    for h in range(24):
+        skill, name = CALENDAR[h]
+        meta = CALENDAR_META[h]
+        prov = meta["provider"]
+        dur  = meta["dur"]
+        rate = PROVIDERS.get(prov, {}).get("cost_per_sec", 0)
+        est  = f"~${rate * dur:.2f}"
+        hero_tag = {"cartoon": "🎨", "real": "🎥", "both": "🎨🎥", "none": "🌄"}[meta["hero"]]
+        print(f"  {h:>2}h  {name:<24} {hero_tag:<8} {prov:<12} {est:>6}  {meta['desc'][:38]}")
+    total_cartoon = sum(
+        PROVIDERS.get(CALENDAR_META[h]["provider"], {}).get("cost_per_sec", 0) * CALENDAR_META[h]["dur"]
+        for h in range(24)
+    )
+    print(f"\n  💰 Если запустить ВСЕ 24: ~${total_cartoon:.2f}/день  (~${total_cartoon*30:.0f}/мес)")
+    print(f"  💡 Реально нужно 1-3 видео/день → ~${total_cartoon/24:.2f}-${total_cartoon/8:.2f}/день\n")
+
 # ---------------------------------------------------------------------------
 # LLM backends
 # ---------------------------------------------------------------------------
@@ -323,21 +407,38 @@ PROVIDERS = {
         "image": "https://fal.run/bytedance/seedance-2.0/image-to-video",
         "auth": lambda k: {"Authorization": f"Key {k}"},
         "env": "FAL_KEY",
+        "cost_per_sec": 0.12,   # ~$0.12/s @ 1080p standard
     },
     "fal-fast": {
         "text": "https://fal.run/bytedance/seedance-2.0/fast/text-to-video",
         "image": "https://fal.run/bytedance/seedance-2.0/fast/image-to-video",
         "auth": lambda k: {"Authorization": f"Key {k}"},
         "env": "FAL_KEY",
+        "cost_per_sec": 0.06,   # ~$0.06/s @ 720p fast tier
+    },
+    "fal-wan": {
+        # Wan 2.5 on fal — $0.05/sec = 20 seconds per $1 (best $/sec in class).
+        "text":  "https://fal.run/fal-ai/wan-25-preview/text-to-video",
+        "image": "https://fal.run/fal-ai/wan-25-preview/image-to-video",
+        "auth":  lambda k: {"Authorization": f"Key {k}"},
+        "env":   "FAL_KEY",
+        "cost_per_sec": 0.05,
+    },
+    "fal-wan26": {
+        # Wan 2.6 — latest, even better motion and detail than 2.5.
+        "text":  "https://fal.run/wan/v2.6/text-to-video",
+        "image": "https://fal.run/wan/v2.6/image-to-video",
+        "auth":  lambda k: {"Authorization": f"Key {k}"},
+        "env":   "FAL_KEY",
+        "cost_per_sec": 0.05,
     },
     "fal-ltx": {
-        # LTX Video on fal — ultra-cheap B-roll tier (~$0.08/clip).
-        # ~10× cheaper than Seedance standard; lower fidelity but fine for
-        # hourly cron fillers, loops, abstract/texture shots.
+        # LTX Video — ultra-cheap B-roll tier.
         "text":  "https://fal.run/fal-ai/ltx-video-13b-distilled/multiconditioning",
         "image": "https://fal.run/fal-ai/ltx-video-13b-distilled/multiconditioning",
         "auth":  lambda k: {"Authorization": f"Key {k}"},
         "env":   "FAL_KEY",
+        "cost_per_sec": 0.016,  # ~$0.08 per 5s clip
     },
     "enhancor": {
         # Enhancor.ai — cheaper Seedance 2 (-45% base, code SAVE25 stacks to -75%).
@@ -526,9 +627,25 @@ def agent_fal_runner(prompt_payload: dict, out_path: pathlib.Path, log_path: pat
     payload = {
         "prompt": prompt_payload["prompt"],
         "aspect_ratio": prompt_payload["aspect_ratio"],
-        "duration": str(prompt_payload["duration_sec"]),
+        "duration": str(int(prompt_payload["duration_sec"])),  # fal expects string e.g. "5" or "10"
         "resolution": prompt_payload["resolution"],
+        # Safety checker can only be disabled via API (not playground).
+        # Disable for Wan providers — needed for AI-generated human avatars
+        # which the default checker incorrectly flags.
+        # For Seedance (fal/fal-fast) keep it ON — their moderation is server-side
+        # and cannot be bypassed by this flag anyway.
+        "enable_safety_checker": provider not in ("fal", "fal-fast"),
     }
+    # Wan models benefit from a standard negative prompt — improves sharpness/quality
+    if provider in ("fal-wan", "fal-wan26", "fal-ltx"):
+        payload["negative_prompt"] = (
+            "low resolution, blurry, worst quality, low quality, defects, "
+            "watermark, duplicate, distorted faces, extra limbs"
+        )
+    # Wan supports audio_url for background music or lipsync speech.
+    # Pass via prompt_payload["audio_url"] (set by caller from TG audio attachment).
+    if provider in ("fal-wan", "fal-wan26") and prompt_payload.get("audio_url"):
+        payload["audio_url"] = prompt_payload["audio_url"]
     if provider == "enhancor":
         promo = os.environ.get("ENHANCOR_PROMO")
         if promo:
@@ -555,14 +672,43 @@ def agent_fal_runner(prompt_payload: dict, out_path: pathlib.Path, log_path: pat
             raise SystemExit("aborted by --confirm")
 
     req = urllib.request.Request(url, data=body, headers=headers, method="POST")
-    with urllib.request.urlopen(req, timeout=900) as r:
-        data = json.loads(r.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(req, timeout=900) as r:
+            data = json.loads(r.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8", errors="replace")
+        # Seedance (and Kling) moderate realistic human faces — AI avatars included.
+        # On moderation rejection, auto-retry with Wan 2.5 which has no such policy.
+        moderation_signals = ("moderat", "content policy", "safety", "reject", "not allowed",
+                              "prohibited", "flagged", "violat")
+        is_moderated = e.code in (400, 403, 422) and any(
+            s in err_body.lower() for s in moderation_signals)
+        if is_moderated and provider in ("fal", "fal-fast"):
+            print(f"\n  ⚠️  {provider} moderated this request (HTTP {e.code}).")
+            print("     Seedance rejects realistic human faces (AI avatars included).")
+            print("     Auto-retrying with fal-wan (Wan 2.5 — no face moderation, $0.05/s)…\n")
+            with log_path.open("a", encoding="utf-8") as f:
+                f.write(f"[moderation] {provider} rejected → fallback to fal-wan\n{err_body[:500]}\n")
+            return agent_fal_runner(prompt_payload, out_path, log_path,
+                                    hero=hero, background=background,
+                                    provider="fal-wan", model=model, confirm=False)
+        raise RuntimeError(f"fal.ai HTTP {e.code}: {err_body[:400]}") from e
 
     video_url = (data.get("video") or {}).get("url") or data.get("video_url")
     if not video_url:
         raise RuntimeError(f"fal.ai returned no video URL: {data}")
     with urllib.request.urlopen(video_url, timeout=600) as r, out_path.open("wb") as f:
         f.write(r.read())
+
+    # Print estimated cost based on provider rate × duration
+    duration = prompt_payload.get("duration_sec", 5)
+    rate = prov.get("cost_per_sec")
+    if rate:
+        est = rate * duration
+        print(f"       💰 ~${est:.3f}  ({provider} · {duration}s · ${rate}/s)")
+        with log_path.open("a", encoding="utf-8") as f:
+            f.write(f"[cost] estimated ${est:.3f} ({provider} {duration}s)\n")
+
     return out_path
 
 
@@ -640,6 +786,7 @@ def run(mode: str, story: str, preferred_skill: str | None, slug: str, dry_run: 
         print("[dry-run] skipping fal.ai + assembly")
         return
 
+    total_cost = 0.0
     clips: list[pathlib.Path] = []
     for shot, skill, payload in plans:
         clip = OUTPUT_DIR / f"{ts}-{slug}-shot{shot['id']:02d}.mp4"
@@ -647,18 +794,26 @@ def run(mode: str, story: str, preferred_skill: str | None, slug: str, dry_run: 
         # unless user explicitly chose a premium provider.
         shot_provider = provider
         if provider == "fal-fast" and not hero:
-            shot_provider = "fal-ltx"
-            print(f"[4/5] shot {shot['id']} — no hero → auto-downgrade to fal-ltx (~$0.08) -> {clip.name}")
+            shot_provider = "fal-wan"
+            print(f"[4/5] shot {shot['id']} — no hero → auto-downgrade to fal-wan (~$0.05/s) -> {clip.name}")
         else:
             print(f"[4/5] shot {shot['id']} — {shot_provider} rendering -> {clip.name}")
         agent_fal_runner(payload, clip, log_path, hero=hero, background=bg,
                          provider=shot_provider, model=model, confirm=confirm)
         clips.append(clip)
+        prov_info = PROVIDERS.get(shot_provider, {})
+        rate = prov_info.get("cost_per_sec")
+        if rate:
+            total_cost += rate * payload.get("duration_sec", 5)
 
     print("[5/5] assembling…")
     final = OUTPUT_DIR / f"{ts}-{slug}.final.mp4"
     agent_assembler(clips, final)
     print(f"[done] {final}")
+    if total_cost:
+        print(f"\n💰 Total estimated cost: ${total_cost:.3f}  "
+              f"({len(clips)} clip{'s' if len(clips)>1 else ''}, "
+              f"~${total_cost*30:.2f}/mo at 1 video/day)")
 
 
 def main() -> None:
@@ -690,7 +845,14 @@ def main() -> None:
                          "Shorter = cheaper. TikTok/Reels cut hard at 3s anyway.")
     ap.add_argument("--confirm", action="store_true",
                     help="Show payload and ask y/N before each paid API call")
+    ap.add_argument("--list-scenarios", action="store_true",
+                    help="Print all 24 calendar scenarios with cost estimates, split by hero type")
     args = ap.parse_args()
+
+    if args.list_scenarios:
+        cmd_list_scenarios()
+        cmd_list_scenarios_full()
+        sys.exit(0)
 
     if args.hour is not None:
         skill_dir, name = CALENDAR[args.hour % 24]

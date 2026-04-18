@@ -21,7 +21,12 @@ the image itself via `stylize.py` before any video call.
 **Known failure log (do not repeat):**
 - 2026-04-17 15:06 — photo of two daughters → Seedance image-to-video → rejected
 - 2026-04-17 15:11 — same photo as `@Image1` in text-to-video prompt → rejected
-- Both calls wasted ~5 min each of wall clock and broke user trust.
+- 2026-04-18 — AI-generated adult male avatar (flux-kontext stylized) → Seedance → ALSO rejected. Seedance moderates ALL realistic human faces, not just minors. Fallback was Kling — WRONG (same moderation, also expensive at $0.07/s).
+
+**🚨 HARD RULE #2 — Seedance rejects realistic human faces period. Kling is NOT a fallback.**
+- Seedance = no real photos, no realistic AI faces, no identifiable humans
+- Kling = same moderation policy + more expensive → NEVER use as fallback for rejected Seedance jobs
+- **Correct fallback for human-face video: `fal-wan` or `fal-wan26`** — Wan 2.5/2.6 has no such moderation on AI-generated faces and costs $0.05/s (cheapest in class)
 
 **Trigger**: the user sends a photo via Telegram (or via file path) that contains
 an identifiable real human face — especially their kids, family, or themselves.
@@ -125,15 +130,72 @@ they don't think it's a bug when you detour.
 - **Before any paid fal call**, show the user payload + estimated cost and wait for confirmation (unless they explicitly said "go fast" or similar).
 - **Hero/background asset writes**: put photos into `assets/hero/heroN/` or `assets/hero/hero-live/`. Never overwrite `assets/hero/heroN/` folders the user curated — make a new subfolder for session uploads.
 
+## 🖼️ Когда приходит картинка — обязательный flow
+
+Когда пользователь присылает изображение через Telegram (image_path в теге), **ВСЕГДА**
+делай следующее — не жди команды, сам определяй и предлагай:
+
+### Шаг 1 — Определи тип картинки (vision)
+Посмотри на изображение и определи:
+- **face-cartoon** — мультяшное/AI лицо (аватар девочек, Pixar-стиль и т.д.)
+- **face-real** — реальное фото человека → сначала stylize.py, см. HARD RULE #1
+- **landscape** — пейзаж, город, природа, архитектура
+- **product** — товар, объект, еда
+- **abstract** — паттерн, текстура, арт
+
+### Шаг 2 — Предложи 3 сценария из календаря
+Подбери 3 подходящих слота из CALENDAR_META в director.py и ответь примерно так:
+
+```
+Вижу [тип]. Вот 3 сценария под эту картинку:
+
+1️⃣ [h14] Rendered Reality — 3D CGI, Pixar-герой, fal-wan26, ~$0.30
+   "Твой аватар в студийном 3D освещении, медленный облёт камеры"
+
+2️⃣ [h21] Bedtime Chaos — мультфильм/bedtime, fal-wan26, ~$0.30
+   "Мягкие цвета, герой засыпает, звёзды появляются"
+
+3️⃣ [h16] Rush Hour Clash — аниме-экшн, fal-wan26, ~$0.25
+   "Атака, спецприём, искры, скорость"
+
+Выбери номер — или скажи свою идею.
+🎵 Добавить звук? Три варианта:
+• Пришли аудио файл (музыка / голос) — Wan наложит его
+• Надиктуй голосовое сообщение — я транскрибирую и сделаю TTS
+• Напиши текст что должен говорить герой — сделаю TTS и передам Вану
+• "Без звука" — тишина
+```
+
+### Шаг 3 — Спроси про аудио (Wan поддерживает!)
+Wan 2.5/2.6 принимает `audio_url` — фоновая музыка или речь для липсинка.
+Четыре варианта от пользователя:
+
+| Что прислал | Что делать |
+|---|---|
+| Аудио файл (mp3/wav/ogg) | Скачай через `download_attachment` → загрузи на fal storage → `audio_url` |
+| Голосовое сообщение (voice) | Скачай → конвертируй в mp3 (ffmpeg) → загрузи на fal storage → сразу как `audio_url` в видео. Без транскрипции, без TTS — твой голос напрямую. |
+| Текст ("скажи: Привет мир") | Синтез через `fal-ai/minimax-tts` или `fal-ai/fish-speech` → `audio_url` |
+| "Без звука" / молчание | Не добавляй `audio_url` |
+
+Стоимость TTS: ~$0.03/строку (minimax) — сообщи пользователю перед генерацией.
+
+**Формат ответа боту должен включать:**
+1. Что ты видишь на картинке (1 строка)
+2. 3 сценария с ценой
+3. Вопрос про музыку/речь
+4. Никаких лишних вопросов — всё в одном сообщении
+
 ## Typical TG request → action map
 
 | User says | You do |
 |---|---|
-| `[photo1] hero 3D cartoon [photo2] background — generate` | Save photos → compose prompt using `skills/02-3d-cgi/SKILL.md` → call fal image-to-video with hero as `image_url` → return mp4 |
-| "чек" / "flight check" | Run `director.py --mode=openrouter --hour $(date +%H) --dry-run` (or use `--skill` if a specific skill was mentioned) |
-| "h14 test" | One-shot render through `--confirm` mode, show payload, wait for y/N |
-| "h14 go" | Render without confirm (user accepted the risk) |
-| "статус" / "status" | `ls -lt output/*.mp4 \| head -5`, git log -3, fal balance if `FAL_KEY` set |
+| `[фото]` (просто картинка без текста) | Анализируй → предложи 3 сценария + спроси про аудио |
+| `[фото] + номер сценария` | Сразу рендери выбранный сценарий, спроси только про аудио |
+| `[фото1] hero 3D cartoon [фото2] background — generate` | Save photos → compose prompt → fal image-to-video → return mp4 |
+| "чек" / "flight check" | Run `director.py --mode=openrouter --hour $(date +%H) --dry-run` |
+| "h14 test" | One-shot render через `--confirm`, показать payload, ждать y/N |
+| "h14 go" | Рендер без confirm (пользователь принял риск) |
+| "статус" / "status" | `ls -lt output/*.mp4 \| head -5`, git log -3, fal balance |
 
 ## Verified facts
 
